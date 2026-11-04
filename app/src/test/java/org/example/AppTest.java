@@ -7,16 +7,20 @@ import org.junit.jupiter.api.Test;
 
 import net.jqwik.api.Arbitraries;
 import net.jqwik.api.Arbitrary;
+import net.jqwik.api.Combinators;
 import net.jqwik.api.ForAll;
+import net.jqwik.api.Property;
 import net.jqwik.api.Provide;
+import net.jqwik.api.constraints.WithNull;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.google.j2objc.annotations.Property;
+import java.time.LocalDate;
+import java.util.StringJoiner;
 
 import org.instancio.Instancio;
-import org.instancio.Select;
+import org.jspecify.annotations.Nullable;
 
 class AppTest {
     @Test
@@ -40,16 +44,111 @@ class AppTest {
 
     @Property
     public void test_newVehiclesHaveNewCondition(@ForAll("newVehicles") StockItem newVehicle) {
-       assertThat(isNew(newVehicle)).isFalse();
+        assertThat(isNew(newVehicle)).isTrue();
     }
 
     @Provide
     Arbitrary<StockItem> newVehicles() {
         return Arbitraries.ofSuppliers(() -> {
-                StockItem stockItem = Instancio.create(StockItem.class);
-                stockItem.setDateOfRegistration(null);
-                stockItem.setRegistration(null);
-                return stockItem;
-            });
+            StockItem stockItem = Instancio.create(StockItem.class);
+            stockItem.setDateOfRegistration(null);
+            stockItem.setRegistration(null);
+            return stockItem;
+        });
     }
+
+    ///
+    ///
+    private String generateAdvertTitle(StockItem stockItem) {
+        int year = stockItem.getDateOfRegistration().getYear();
+
+        return year + " " + stockItem.getMake() + " " + stockItem.getModel();
+    }
+
+    @Property
+    public void test_AdvertTitleContainsNoNulls(@ForAll("stockItem") StockItem stockItem, @ForAll @WithNull String make,
+            @ForAll @WithNull String model, @ForAll @WithNull LocalDate dateOfRegistration) {
+        stockItem.setMake(make);
+        stockItem.setModel(model);
+        stockItem.setDateOfRegistration(dateOfRegistration);
+
+        String myAdvertTitle = generateAdvertTitleFixed(stockItem);
+
+        assertThat(myAdvertTitle).doesNotContain("null").doesNotStartWith(" ").doesNotEndWith(" ");
+    }
+
+    @Provide
+    Arbitrary<StockItem> stockItem() {
+        return Arbitraries.ofSuppliers(() -> {
+            return Instancio.create(StockItem.class);
+        });
+    }
+
+    private String generateAdvertTitleFixed(StockItem stockItem) {
+        LocalDate dateOfRegistration = stockItem.getDateOfRegistration();
+        String make = stockItem.getMake();
+        String model = stockItem.getModel();
+
+        StringJoiner titleBuilder = new StringJoiner(" ");
+
+        if (dateOfRegistration != null) {
+            int year = dateOfRegistration.getYear();
+            titleBuilder = titleBuilder.add(Integer.toString(year));
+
+        }
+        if (make != null) {
+            titleBuilder = titleBuilder.add(make);
+        }
+        if (model != null) {
+            titleBuilder = titleBuilder.add(model);
+        }
+
+        return titleBuilder.toString().trim();
+    }
+
+    // Resource Mapping
+    static record StockItemResource(String registration, String make, String model, boolean scrapped, boolean stolen,
+            boolean exported) {
+
+    }
+
+    private StockItem toDomain(StockItemResource resource) {
+        StockItem domain = new StockItem();
+        domain.setRegistration(resource.registration());
+        domain.setMake(resource.make());
+        domain.setModel(resource.model());
+        domain.setStolen(resource.stolen());
+        domain.setScrapped(resource.scrapped());
+        return domain;
+    }
+
+    private StockItemResource toResource(StockItem domain) {
+        return new StockItemResource(domain.getRegistration(), domain.getModel(), domain.getModel(), domain.isStolen(), domain.isStolen(), domain.isExported());
+    }
+
+    @Property
+    public void test_ResourceMappingIsSymmetrical(@ForAll("stockItemResources") StockItemResource resource) {
+        StockItem domain = toDomain(resource);
+        StockItemResource nextResource = toResource(domain);
+
+        assertThat(resource).usingRecursiveComparison().isEqualTo(nextResource);
+    }
+
+    @Provide
+    Arbitrary<StockItemResource> stockItemResources() {
+        Arbitrary<@Nullable String> registrations = Arbitraries.strings().ofMinLength(4).ofMaxLength(10)
+                .injectNull(0.1);
+        Arbitrary<@Nullable String> makes = Arbitraries.strings().ofMinLength(4).ofMaxLength(10).injectNull(0.1);
+        Arbitrary<@Nullable String> models = Arbitraries.strings().ofMinLength(4).ofMaxLength(10).injectNull(0.1);
+
+        Arbitrary<Boolean> scrappeds = Arbitraries.of(false, true);
+        Arbitrary<Boolean> stolens = Arbitraries.of(false, true);
+        Arbitrary<Boolean> exporteds = Arbitraries.of(false, true);
+
+        return Combinators.combine(registrations, makes, models, scrappeds, stolens, exporteds)
+                .as((registration, make, model, scrapped, stolen, exported) -> {
+                    return new StockItemResource(registration, make, model, scrapped, stolen, exported);
+                });
+    }
+
 }

@@ -20,6 +20,9 @@ public class StockItem {
     private LocalDate dateOfRegistration;
     @Positive
     private Long price;
+    private boolean scrapped;
+    private boolean stolen;
+    private boolean exported;
 
     public enum VehicleType {
         CARS,
@@ -90,5 +93,31 @@ public class StockItem {
     public void setVehicleType(VehicleType vehicleType) {
         this.vehicleType = vehicleType;
     }
+
+    public boolean isScrapped() {
+        return scrapped;
+    }
+
+    public void setScrapped(boolean scrapped) {
+        this.scrapped = scrapped;
+    }
+
+    public boolean isStolen() {
+        return stolen;
+    }
+
+    public void setStolen(boolean stolen) {
+        this.stolen = stolen;
+    }
+
+    public boolean isExported() {
+        return exported;
+    }
+
+    public void setExported(boolean exported) {
+        this.exported = exported;
+    }
+
+
 
 }
