@@ -3,8 +3,6 @@
  */
 package org.example;
 
-import org.junit.jupiter.api.Test;
-
 import net.jqwik.api.Arbitraries;
 import net.jqwik.api.Arbitrary;
 import net.jqwik.api.Combinators;
@@ -14,29 +12,14 @@ import net.jqwik.api.Provide;
 import net.jqwik.api.constraints.WithNull;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import java.time.LocalDate;
-import java.util.StringJoiner;
 
 import org.instancio.Instancio;
 import org.jspecify.annotations.Nullable;
 
 class AppTest {
-    @Test
-    void appHasAGreeting() {
-        App classUnderTest = new App();
-        assertNotNull(classUnderTest.getGreeting(), "app should have a greeting");
-    }
-
-    @Test
-    public void test_stuff() {
-        StockItem stockItem = new StockItem();
-        StockItem random1 = Instancio.create(StockItem.class);
-
-        // Assertions
-        assertThat(stockItem).usingRecursiveComparison().isNotEqualTo(random1);
-    }
 
     static boolean isNew(StockItem stockItem) {
         return stockItem.getRegistration() == null && stockItem.getDateOfRegistration() == null;
@@ -58,7 +41,7 @@ class AppTest {
     }
 
     ///
-    ///
+    /// Fix me
     private String generateAdvertTitle(StockItem stockItem) {
         int year = stockItem.getDateOfRegistration().getYear();
 
@@ -67,14 +50,15 @@ class AppTest {
 
     @Property
     public void test_AdvertTitleContainsNoNulls(@ForAll("stockItem") StockItem stockItem, @ForAll @WithNull String make,
-            @ForAll @WithNull String model, @ForAll @WithNull LocalDate dateOfRegistration) {
+                                                @ForAll @WithNull String model, @ForAll @WithNull LocalDate dateOfRegistration) {
         stockItem.setMake(make);
         stockItem.setModel(model);
         stockItem.setDateOfRegistration(dateOfRegistration);
 
-        String myAdvertTitle = generateAdvertTitleFixed(stockItem);
-
-        assertThat(myAdvertTitle).doesNotContain("null").doesNotStartWith(" ").doesNotEndWith(" ");
+        assertThatNoException().isThrownBy(() -> {
+            String myAdvertTitle = generateAdvertTitle(stockItem);
+            assertThat(myAdvertTitle).doesNotContain("null").doesNotStartWith(" ").doesNotEndWith(" ");
+        });
     }
 
     @Provide
@@ -84,31 +68,9 @@ class AppTest {
         });
     }
 
-    private String generateAdvertTitleFixed(StockItem stockItem) {
-        LocalDate dateOfRegistration = stockItem.getDateOfRegistration();
-        String make = stockItem.getMake();
-        String model = stockItem.getModel();
-
-        StringJoiner titleBuilder = new StringJoiner(" ");
-
-        if (dateOfRegistration != null) {
-            int year = dateOfRegistration.getYear();
-            titleBuilder = titleBuilder.add(Integer.toString(year));
-
-        }
-        if (make != null) {
-            titleBuilder = titleBuilder.add(make);
-        }
-        if (model != null) {
-            titleBuilder = titleBuilder.add(model);
-        }
-
-        return titleBuilder.toString().trim();
-    }
-
     // Resource Mapping
     static record StockItemResource(String registration, String make, String model, boolean scrapped, boolean stolen,
-            boolean exported) {
+                                    boolean exported) {
 
     }
 
@@ -136,8 +98,7 @@ class AppTest {
 
     @Provide
     Arbitrary<StockItemResource> stockItemResources() {
-        Arbitrary<@Nullable String> registrations = Arbitraries.strings().ofMinLength(4).ofMaxLength(10)
-                .injectNull(0.1);
+        Arbitrary<@Nullable String> registrations = Arbitraries.strings().ofMinLength(4).ofMaxLength(10).injectNull(0.1);
         Arbitrary<@Nullable String> makes = Arbitraries.strings().ofMinLength(4).ofMaxLength(10).injectNull(0.1);
         Arbitrary<@Nullable String> models = Arbitraries.strings().ofMinLength(4).ofMaxLength(10).injectNull(0.1);
 
@@ -145,10 +106,7 @@ class AppTest {
         Arbitrary<Boolean> stolens = Arbitraries.of(false, true);
         Arbitrary<Boolean> exporteds = Arbitraries.of(false, true);
 
-        return Combinators.combine(registrations, makes, models, scrappeds, stolens, exporteds)
-                .as((registration, make, model, scrapped, stolen, exported) -> {
-                    return new StockItemResource(registration, make, model, scrapped, stolen, exported);
-                });
+        return Combinators.combine(registrations, makes, models, scrappeds, stolens, exporteds).as(StockItemResource::new);
     }
 
 }
