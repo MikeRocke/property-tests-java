@@ -40,14 +40,6 @@ class AppTest {
         });
     }
 
-    ///
-    /// Fix me
-    private String generateAdvertTitle(StockItem stockItem) {
-        int year = stockItem.getDateOfRegistration().getYear();
-
-        return year + " " + stockItem.getMake() + " " + stockItem.getModel();
-    }
-
     @Property
     public void test_AdvertTitleContainsNoNulls(@ForAll("stockItem") StockItem stockItem, @ForAll @WithNull String make,
                                                 @ForAll @WithNull String model, @ForAll @WithNull LocalDate dateOfRegistration) {
@@ -56,7 +48,7 @@ class AppTest {
         stockItem.setDateOfRegistration(dateOfRegistration);
 
         assertThatNoException().isThrownBy(() -> {
-            String myAdvertTitle = generateAdvertTitle(stockItem);
+            String myAdvertTitle = StockItem.generateAdvertTitle(stockItem);
             assertThat(myAdvertTitle).doesNotContain("null").doesNotStartWith(" ").doesNotEndWith(" ");
         });
     }
@@ -68,30 +60,10 @@ class AppTest {
         });
     }
 
-    // Resource Mapping
-    static record StockItemResource(String registration, String make, String model, boolean scrapped, boolean stolen,
-                                    boolean exported) {
-
-    }
-
-    private StockItem toDomain(StockItemResource resource) {
-        StockItem domain = new StockItem();
-        domain.setRegistration(resource.registration());
-        domain.setMake(resource.make());
-        domain.setModel(resource.model());
-        domain.setStolen(resource.stolen());
-        domain.setScrapped(resource.scrapped());
-        return domain;
-    }
-
-    private StockItemResource toResource(StockItem domain) {
-        return new StockItemResource(domain.getRegistration(), domain.getModel(), domain.getModel(), domain.isStolen(), domain.isStolen(), domain.isExported());
-    }
-
     @Property
     public void test_ResourceMappingIsSymmetrical(@ForAll("stockItemResources") StockItemResource resource) {
-        StockItem domain = toDomain(resource);
-        StockItemResource nextResource = toResource(domain);
+        StockItem domain = StockItemResource.toDomain(resource);
+        StockItemResource nextResource = StockItemResource.toResource(domain);
 
         assertThat(resource).usingRecursiveComparison().isEqualTo(nextResource);
     }

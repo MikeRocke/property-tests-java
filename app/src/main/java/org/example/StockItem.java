@@ -24,6 +24,14 @@ public class StockItem {
     private boolean stolen;
     private boolean exported;
 
+    ///
+    /// Fix me
+    public static String generateAdvertTitle(StockItem stockItem) {
+        int year = stockItem.getDateOfRegistration().getYear();
+
+        return year + " " + stockItem.getMake() + " " + stockItem.getModel();
+    }
+
     public enum VehicleType {
         CARS,
         BIKE,
